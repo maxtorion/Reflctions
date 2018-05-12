@@ -7,7 +7,7 @@ import java.lang.reflect.Method;
 
 public class methodCell extends ListCell<Method> {
 
-    boolean canBeInvoked = false;
+
 
     @Override
     protected void updateItem(Method item, boolean empty) {
@@ -18,7 +18,7 @@ public class methodCell extends ListCell<Method> {
         {//sets in green items that can Invoked
             this.setText(item.toString());
             this.setTextFill(Color.GREEN);
-            this.canBeInvoked = true;
+
         }else if (item != null){
         //sets in red items that can Invoked
             this.setText(item.toString());
