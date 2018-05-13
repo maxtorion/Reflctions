@@ -5,6 +5,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.TextFieldTableCell;
@@ -56,7 +57,6 @@ public class Controller {
         //Firing method, which after Enter is pressed creates reflection and tasks specified in zpo lab 4
 
 
-
         if (event.getCode().equals(KeyCode.ENTER)) {
 
             try {
@@ -65,12 +65,11 @@ public class Controller {
                 this.methodsListView.setItems(FXCollections.observableArrayList(reflectionClass.getMethods()));
 
 
-
                 ObservableList<Field> avaibleFields = FXCollections.observableArrayList();
 
-                for (Field field:this.reflectionClass.getDeclaredFields()) {
+                for (Field field : this.reflectionClass.getDeclaredFields()) {
 
-                    if(checkIfGetterExists(field.getName(),this.reflectionClass))
+                    if (Misc.checkIfGetterExists(field.getName(), this.reflectionClass))
                         avaibleFields.add(field);
 
                 }
@@ -78,47 +77,19 @@ public class Controller {
                 this.getANDsetTableVIew.setItems(avaibleFields);
 
 
-
             } catch (ClassNotFoundException e) {
-                failedCreationMessage(e);
+                Misc.failedCreationMessage(e, this.reflectionClass);
 
             } catch (IllegalAccessException e) {
-                failedCreationMessage(e);
+                Misc.failedCreationMessage(e, this.reflectionClass);
             } catch (InstantiationException e) {
-               failedCreationMessage(e);
+                Misc.failedCreationMessage(e, this.reflectionClass);
             }
         }
     }
-    private void failedCreationMessage(Exception e)
-    {
-        System.out.println("Cannot create instance of the class: "+ this.reflectionClass.getName()+"\n"+e.toString());
-        System.out.println("Class annotations: ");
-        Annotation [] ann = this.reflectionClass.getAnnotations();
-        for (Annotation a:ann
-             ) {
-            System.out.format(" %s%n ", a.toString());
-        }
-        System.out.println("Is interface?: "+this.reflectionClass.isInterface());
-        System.out.println("Is abstract?: " + Modifier.isAbstract(this.reflectionClass.getModifiers()));
-        System.out.println("Is static?: "+Modifier.isStatic(this.reflectionClass.getModifiers()));
-        System.out.println("Is private?: "+Modifier.isPrivate(this.reflectionClass.getModifiers()));
-        System.out.println("Is protected?: "+Modifier.isProtected(this.reflectionClass.getModifiers()));
 
-    }
 
-    private boolean checkIfGetterExists(String fieldName, Class classReflection)
-    {
-       final String getterName = fieldName.replace(fieldName.charAt(0),Character.toUpperCase(fieldName.charAt(0)));
-       long getters = Arrays.asList(classReflection.getMethods()).stream().filter(method -> method.getName().equals("get"+getterName)).count();
-
-       if (getters > 0)
-           return true;
-       else
-           return false;
-    }
-
-    public void initialize()
-    {
+    public void initialize() {
         //to set some properties on initialization
         this.methodsListView.setCellFactory(new Callback<ListView<Method>, ListCell<Method>>() {
             @Override
@@ -129,17 +100,15 @@ public class Controller {
         //event handler to invoke method after two mouse clicks on it
         this.methodsListView.setOnMouseClicked(event ->
         {
-            if(event.getClickCount()==2)
-            {
-                if(this.methodsListView.getSelectionModel().getSelectedItem().getParameterCount()==0)
-                {
+            if (event.getClickCount() == 2) {
+                if (this.methodsListView.getSelectionModel().getSelectedItem().getParameterCount() == 0) {
                     Method method = this.methodsListView.getSelectionModel().getSelectedItem();
                     method.setAccessible(true);
                     try {
-                        System.out.println("Udało się wywołać metodę: "+method.getName());
+                        System.out.println("Udało się wywołać metodę: " + method.getName());
 
-                        if(!Modifier.isStatic(method.getModifiers()))
-                        System.out.println(method.invoke(this.reflectionInstance));
+                        if (!Modifier.isStatic(method.getModifiers()))
+                            System.out.println(method.invoke(this.reflectionInstance));
 
                         else
                             System.out.println(method.invoke(null));
@@ -153,10 +122,9 @@ public class Controller {
             }
 
 
-
         });
         //configuration of tableColumns
-        TableColumn<Field,String> fieldStringTableColumn = (TableColumn<Field, String>) this.getANDsetTableVIew.getColumns().get(0);
+        TableColumn<Field, String> fieldStringTableColumn = (TableColumn<Field, String>) this.getANDsetTableVIew.getColumns().get(0);
 
         fieldStringTableColumn.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Field, String>, ObservableValue<String>>() {
             @Override
@@ -165,17 +133,22 @@ public class Controller {
                 return new SimpleStringProperty(param.getValue().getName());
             }
         });
-        fieldStringTableColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+        fieldStringTableColumn.setCellFactory(new Callback<TableColumn<Field, String>, TableCell<Field, String>>() {
+            @Override
+            public TableCell<Field, String> call(TableColumn<Field, String> param) {
+                return new fieldNameCell(reflectionClass);
+            }
+        });
 
-        TableColumn<Field,String> valueStringTableColum = (TableColumn<Field, String>) this.getANDsetTableVIew.getColumns().get(1);
+        TableColumn<Field, String> valueStringTableColum = (TableColumn<Field, String>) this.getANDsetTableVIew.getColumns().get(1);
 
         valueStringTableColum.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Field, String>, ObservableValue<String>>() {
             @Override
             public ObservableValue<String> call(TableColumn.CellDataFeatures<Field, String> param) {
                 try {
                     param.getValue().setAccessible(true);
-                    if(Modifier.isStatic(param.getValue().getModifiers()))
-                    return new SimpleStringProperty(param.getValue().get(null).toString());
+                    if (Modifier.isStatic(param.getValue().getModifiers()))
+                        return new SimpleStringProperty(param.getValue().get(null).toString());
                     else
                         return new SimpleStringProperty(param.getValue().get(reflectionInstance).toString());
                 } catch (IllegalAccessException e) {
@@ -185,11 +158,30 @@ public class Controller {
                 return null;
             }
         });
-        valueStringTableColum.setCellFactory(TextFieldTableCell.forTableColumn());
-        
-        
-        
-        
+   //         valueStringTableColum.setCellFactory(TextFieldTableCell.forTableColumn());
+
+        valueStringTableColum.setCellFactory(new Callback<TableColumn<Field, String>, TableCell<Field, String>>() {
+            @Override
+            public TableCell<Field, String> call(TableColumn<Field, String> param) {
+                return new valueCell(reflectionClass);
+            }
+        });
+
+        this.getANDsetTableVIew.setEditable(true);
+
+        valueStringTableColum.setOnEditCommit(new EventHandler<TableColumn.CellEditEvent<Field, String>>() {
+            @Override
+            public void handle(TableColumn.CellEditEvent<Field, String> event) {
+                try {
+                    event.getTableView().getItems().get(event.getTablePosition().getRow()).set(event.getTableView().
+                            getItems().get(event.getTablePosition().getRow()), event.getNewValue());
+
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
 
     }
 
