@@ -21,7 +21,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 
-//TODO: Finish the list view by calling getters, and making fields editable if they have seters
+
 //TODO: Add some communicats with returned values of invoked methods and exceptions
 public class Controller {
 
@@ -62,6 +62,7 @@ public class Controller {
             try {
                 this.reflectionClass = Class.forName(this.classTextBox.getText());
                 this.reflectionInstance = this.reflectionClass.newInstance();
+                this.setElements();
                 this.methodsListView.setItems(FXCollections.observableArrayList(reflectionClass.getMethods()));
 
 
@@ -87,9 +88,8 @@ public class Controller {
             }
         }
     }
-
-
-    public void initialize() {
+    private void setElements()
+    {
         //to set some properties on initialization
         this.methodsListView.setCellFactory(new Callback<ListView<Method>, ListCell<Method>>() {
             @Override
@@ -104,14 +104,22 @@ public class Controller {
                 if (this.methodsListView.getSelectionModel().getSelectedItem().getParameterCount() == 0) {
                     Method method = this.methodsListView.getSelectionModel().getSelectedItem();
                     method.setAccessible(true);
+                    String result;
                     try {
-                        System.out.println("Udało się wywołać metodę: " + method.getName());
+                        System.out.println("Udało się wywołać metode: " + method.getName());
 
                         if (!Modifier.isStatic(method.getModifiers()))
-                            System.out.println(method.invoke(this.reflectionInstance));
+                            result = method.invoke(this.reflectionInstance).toString();
 
                         else
-                            System.out.println(method.invoke(null));
+                            result = method.invoke(null).toString();
+
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                        alert.setTitle("Result");
+                        alert.setHeaderText(null);
+                        alert.setContentText("Udało się wywołać metode: " + method.getName()+"\n"+result);
+
+                        alert.showAndWait();
 
                     } catch (IllegalAccessException e) {
                         e.printStackTrace();
@@ -153,35 +161,30 @@ public class Controller {
                         return new SimpleStringProperty(param.getValue().get(reflectionInstance).toString());
                 } catch (IllegalAccessException e) {
                     e.printStackTrace();
+                }catch(NullPointerException e)
+                {
+                    e.printStackTrace();
                 }
 
                 return null;
             }
         });
-   //         valueStringTableColum.setCellFactory(TextFieldTableCell.forTableColumn());
 
         valueStringTableColum.setCellFactory(new Callback<TableColumn<Field, String>, TableCell<Field, String>>() {
             @Override
             public TableCell<Field, String> call(TableColumn<Field, String> param) {
-                return new valueCell(reflectionClass);
+                return new valueCell(reflectionClass,reflectionInstance);
             }
         });
+
 
         this.getANDsetTableVIew.setEditable(true);
+        this.getANDsetTableVIew.getSelectionModel().cellSelectionEnabledProperty().set(true);
 
-        valueStringTableColum.setOnEditCommit(new EventHandler<TableColumn.CellEditEvent<Field, String>>() {
-            @Override
-            public void handle(TableColumn.CellEditEvent<Field, String> event) {
-                try {
-                    event.getTableView().getItems().get(event.getTablePosition().getRow()).set(event.getTableView().
-                            getItems().get(event.getTablePosition().getRow()), event.getNewValue());
+    }
 
-                } catch (IllegalAccessException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-
+    public void initialize() {
+       this.setElements();
 
     }
 
